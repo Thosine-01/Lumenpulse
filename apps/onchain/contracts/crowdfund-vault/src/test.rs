@@ -1,4 +1,3 @@
-#![cfg(test)]
 
 use crate::errors::CrowdfundError;
 use crate::{CrowdfundVaultContract, CrowdfundVaultContractClient};
