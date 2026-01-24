@@ -5,7 +5,7 @@ mod storage;
 mod token;
 
 use errors::CrowdfundError;
-use soroban_sdk::{contract, contractimpl, Address, Env, Symbol};
+use soroban_sdk::{contract, contractimpl, symbol_short, Address, Env, Symbol};
 use storage::{DataKey, ProjectData};
 
 #[contract]
@@ -28,6 +28,12 @@ impl CrowdfundVaultContract {
 
         // Initialize project ID counter
         env.storage().instance().set(&DataKey::NextProjectId, &0u64);
+
+        // Emit initialization event
+        env.events().publish(
+            (symbol_short!("init"),),
+            admin,
+        );
 
         Ok(())
     }
@@ -80,7 +86,7 @@ impl CrowdfundVaultContract {
         // Initialize project balance
         env.storage()
             .persistent()
-            .set(&DataKey::ProjectBalance(project_id, token_address), &0i128);
+            .set(&DataKey::ProjectBalance(project_id, token_address.clone()), &0i128);
 
         // Initialize milestone approval status
         env.storage()
@@ -91,6 +97,12 @@ impl CrowdfundVaultContract {
         env.storage()
             .instance()
             .set(&DataKey::NextProjectId, &(project_id + 1));
+
+        // Emit project creation event
+        env.events().publish(
+            (symbol_short!("create"), owner, token_address),
+            project_id,
+        );
 
         Ok(project_id)
     }
@@ -144,6 +156,12 @@ impl CrowdfundVaultContract {
             .persistent()
             .set(&DataKey::Project(project_id), &project);
 
+        // Emit deposit event
+        env.events().publish(
+            (symbol_short!("deposit"), user, project_id),
+            amount,
+        );
+
         Ok(())
     }
 
@@ -177,6 +195,12 @@ impl CrowdfundVaultContract {
         env.storage()
             .persistent()
             .set(&DataKey::MilestoneApproved(project_id), &true);
+
+        // Emit milestone approval event
+        env.events().publish(
+            (symbol_short!("approve"), admin),
+            project_id,
+        );
 
         Ok(())
     }
@@ -248,7 +272,84 @@ impl CrowdfundVaultContract {
             .persistent()
             .set(&DataKey::Project(project_id), &project);
 
+        // Emit withdraw event
+        env.events().publish(
+            (symbol_short!("withdraw"), project.owner, project_id),
+            amount,
+        );
+
         Ok(())
+    }
+
+    /// Register a new contributor
+    pub fn register_contributor(env: Env, contributor: Address) -> Result<(), CrowdfundError> {
+        // Require contributor authorization
+        contributor.require_auth();
+
+        // Check if already registered
+        if env.storage().persistent().has(&DataKey::Contributor(contributor.clone())) {
+            return Err(CrowdfundError::AlreadyRegistered);
+        }
+
+        // Store registration
+        env.storage().persistent().set(&DataKey::Contributor(contributor.clone()), &true);
+
+        // Initialize reputation
+        env.storage().persistent().set(&DataKey::Reputation(contributor.clone()), &0i128);
+
+        // Emit registration event
+        env.events().publish(
+            (symbol_short!("register"),),
+            contributor,
+        );
+
+        Ok(())
+    }
+
+    /// Update contributor reputation (admin only for now, or could be internal)
+    pub fn update_reputation(env: Env, admin: Address, contributor: Address, change: i128) -> Result<(), CrowdfundError> {
+        // Check if contract is initialized
+        let stored_admin: Address = env
+            .storage()
+            .instance()
+            .get(&DataKey::Admin)
+            .ok_or(CrowdfundError::NotInitialized)?;
+
+        // Verify admin identity
+        if admin != stored_admin {
+            return Err(CrowdfundError::Unauthorized);
+        }
+
+        // Require admin authorization
+        admin.require_auth();
+
+        // Check if contributor is registered
+        if !env.storage().persistent().has(&DataKey::Contributor(contributor.clone())) {
+            return Err(CrowdfundError::ContributorNotFound);
+        }
+
+        // Get current reputation
+        let old_reputation: i128 = env.storage().persistent().get(&DataKey::Reputation(contributor.clone())).unwrap_or(0);
+        let new_reputation = old_reputation + change;
+
+        // Store new reputation
+        env.storage().persistent().set(&DataKey::Reputation(contributor.clone()), &new_reputation);
+
+        // Emit reputation change event
+        env.events().publish(
+            (symbol_short!("reput"), contributor),
+            (old_reputation, new_reputation),
+        );
+
+        Ok(())
+    }
+
+    /// Get contributor reputation
+    pub fn get_reputation(env: Env, contributor: Address) -> Result<i128, CrowdfundError> {
+        if !env.storage().persistent().has(&DataKey::Contributor(contributor.clone())) {
+            return Err(CrowdfundError::ContributorNotFound);
+        }
+        Ok(env.storage().persistent().get(&DataKey::Reputation(contributor)).unwrap_or(0))
     }
 
     /// Get project data
