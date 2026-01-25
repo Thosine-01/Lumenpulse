@@ -2,7 +2,7 @@ use crate::errors::CrowdfundError;
 use crate::{CrowdfundVaultContract, CrowdfundVaultContractClient};
 use soroban_sdk::{
     symbol_short,
-    testutils::Address as _,
+    testutils::{Address as _, Events},
     token::{StellarAssetClient, TokenClient},
     Address, Env,
 };
@@ -545,6 +545,51 @@ fn test_distribute_match() {
 
 #[test]
 fn test_distribute_match_insufficient_pool() {
+fn test_contributor_registration() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (client, admin, _, user, _) = setup_test(&env);
+    client.initialize(&admin);
+
+    // Register contributor
+    client.register_contributor(&user);
+
+    // Verify reputation is 0
+    assert_eq!(client.get_reputation(&user), 0);
+
+    // Try to register again - should fail
+    let result = client.try_register_contributor(&user);
+    assert_eq!(result, Err(Ok(CrowdfundError::AlreadyRegistered)));
+}
+
+#[test]
+fn test_reputation_management() {
+    let env = Env::default();
+    env.mock_all_auths();
+
+    let (client, admin, _, user, _) = setup_test(&env);
+    client.initialize(&admin);
+
+    // Register contributor first
+    client.register_contributor(&user);
+
+    // Update reputation
+    client.update_reputation(&admin, &user, &100);
+    assert_eq!(client.get_reputation(&user), 100);
+
+    // Decrease reputation
+    client.update_reputation(&admin, &user, &-50);
+    assert_eq!(client.get_reputation(&user), 50);
+
+    // Non-admin cannot update reputation
+    let non_admin = Address::generate(&env);
+    let result = client.try_update_reputation(&non_admin, &user, &100);
+    assert_eq!(result, Err(Ok(CrowdfundError::Unauthorized)));
+}
+
+#[test]
+fn test_events_emission() {
     let env = Env::default();
     env.mock_all_auths();
 
@@ -623,4 +668,19 @@ fn test_multiple_contributions_same_user() {
     let match_amount = client.calculate_match(&project_id);
     // Should be approximately 400 (allowing for rounding)
     assert!(match_amount >= 390 && match_amount <= 410);
+    // Deposit
+    client.deposit(&user, &project_id, &500_000);
+
+    // Register contributor
+    client.register_contributor(&user);
+
+    // Update reputation
+    client.update_reputation(&admin, &user, &10);
+
+    // Verify events exist (at least one event should be present)
+    let events = env.events().all();
+    assert!(
+        !events.is_empty(),
+        "Expected at least one event to be emitted"
+    );
 }

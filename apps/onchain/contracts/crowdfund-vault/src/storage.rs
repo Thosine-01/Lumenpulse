@@ -12,6 +12,8 @@ pub enum DataKey {
     ContributorCount(u64),        // project_id -> u32
     Contributor(u64, u32),        // (project_id, index) -> Address
     MatchingPool(Address),        // token_address -> i128
+    Contributor(Address),         // Address -> bool
+    Reputation(Address),          // Address -> i128
 }
 
 #[contracttype]
