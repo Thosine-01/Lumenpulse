@@ -20,21 +20,18 @@ describe('AppController (e2e)', () => {
   });
 
   it('/ (GET)', () => {
-
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return request(app.getHttpServer())
+    return request(app.getHttpServer());
 
     return request(app.getHttpServer() as unknown as Server)
-
       .get('/')
       .expect(200)
       .expect('Hello World!');
   });
 
   it('/nonexistent (GET) - should return standardized error response', () => {
-
     // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    return request(app.getHttpServer())
+    return request(app.getHttpServer());
 
     interface ErrorResponse {
       statusCode: number;
@@ -45,7 +42,6 @@ describe('AppController (e2e)', () => {
     }
 
     return request(app.getHttpServer() as unknown as Server)
-
       .get('/nonexistent')
       .expect(404)
       .then((response) => {

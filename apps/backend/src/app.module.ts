@@ -3,6 +3,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { NewsModule } from './news/news.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
 import databaseConfig from './database/database.config';
@@ -31,6 +32,7 @@ import { TestController } from './test/test.controller';
       }),
       inject: [ConfigService],
     }),
+    NewsModule,
     AuthModule,
     UsersModule,
   ],
