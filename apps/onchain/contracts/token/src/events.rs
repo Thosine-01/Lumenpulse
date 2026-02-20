@@ -1,4 +1,4 @@
-use soroban_sdk::{contractevent, Address, BytesN, Env};
+use soroban_sdk::{contractevent, Address, BytesN};
 
 /// Emitted when the contract WASM is upgraded to a new hash.
 #[contractevent]
