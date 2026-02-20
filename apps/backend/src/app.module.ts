@@ -1,6 +1,7 @@
 import { Module, NestModule, MiddlewareConsumer } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
+import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TestExceptionController } from './test-exception.controller';
@@ -8,6 +9,7 @@ import { SentimentModule } from './sentiment/sentiment.module';
 import { NewsModule } from './news/news.module';
 import { AuthModule } from './auth/auth.module';
 import { UsersModule } from './users/users.module';
+import { PortfolioModule } from './portfolio/portfolio.module';
 import databaseConfig from './database/database.config';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { TestController } from './test/test.controller';
@@ -34,10 +36,12 @@ import { TestController } from './test/test.controller';
       }),
       inject: [ConfigService],
     }),
+    ScheduleModule.forRoot(),
     SentimentModule,
     NewsModule,
     AuthModule,
     UsersModule,
+    PortfolioModule,
   ],
   controllers: [AppController, TestController, TestExceptionController],
   providers: [AppService],
