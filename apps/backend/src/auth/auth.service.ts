@@ -99,11 +99,11 @@ export class AuthService {
   }
 
   async login(
-    user: { id: string; email: string },
+    user: { id: string; email: string; role?: string },
     deviceInfo?: string,
     ipAddress?: string,
   ) {
-    const payload = { email: user.email, sub: user.id };
+    const payload = { email: user.email, sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
 
     // Generate and store refresh token
