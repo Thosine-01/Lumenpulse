@@ -5,6 +5,7 @@ use soroban_sdk::{contracttype, Address, String};
 pub enum DataKey {
     Admin,                // -> Address
     Contributor(Address), // -> ContributorData
+    GitHubIndex(String),  // -> Address
 }
 
 #[contracttype]

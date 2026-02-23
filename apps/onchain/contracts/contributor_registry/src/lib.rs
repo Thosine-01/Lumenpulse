@@ -14,6 +14,23 @@ pub struct ContributorRegistryContract;
 
 #[contractimpl]
 impl ContributorRegistryContract {
+    fn ensure_github_handle_available(
+        env: &Env,
+        github_handle: &String,
+        address: &Address,
+    ) -> Result<(), ContributorError> {
+        if let Some(existing_address) = env
+            .storage()
+            .persistent()
+            .get::<_, Address>(&DataKey::GitHubIndex(github_handle.clone()))
+        {
+            if existing_address != *address {
+                return Err(ContributorError::GitHubHandleTaken);
+            }
+        }
+        Ok(())
+    }
+
     /// Initialize the contract with an admin address
     pub fn initialize(env: Env, admin: Address) -> Result<(), ContributorError> {
         if env.storage().instance().has(&DataKey::Admin) {
@@ -44,16 +61,57 @@ impl ContributorRegistryContract {
         {
             return Err(ContributorError::ContributorAlreadyExists);
         }
+        Self::ensure_github_handle_available(&env, &github_handle, &address)?;
         let timestamp = env.ledger().timestamp();
         let contributor = ContributorData {
             address: address.clone(),
-            github_handle,
+            github_handle: github_handle.clone(),
             reputation_score: 0,
             registered_timestamp: timestamp,
         };
         env.storage()
             .persistent()
-            .set(&DataKey::Contributor(address), &contributor);
+            .set(&DataKey::Contributor(address.clone()), &contributor);
+        env.storage()
+            .persistent()
+            .set(&DataKey::GitHubIndex(github_handle), &address);
+
+        Ok(())
+    }
+
+    /// Update an existing contributor's profile data.
+    pub fn update_contributor(
+        env: Env,
+        address: Address,
+        github_handle: String,
+    ) -> Result<(), ContributorError> {
+        if !env.storage().instance().has(&DataKey::Admin) {
+            return Err(ContributorError::NotInitialized);
+        }
+        address.require_auth();
+        if github_handle.is_empty() {
+            return Err(ContributorError::InvalidGitHubHandle);
+        }
+        let mut contributor: ContributorData = env
+            .storage()
+            .persistent()
+            .get(&DataKey::Contributor(address.clone()))
+            .ok_or(ContributorError::ContributorNotFound)?;
+
+        Self::ensure_github_handle_available(&env, &github_handle, &address)?;
+        if contributor.github_handle != github_handle {
+            env.storage()
+                .persistent()
+                .remove(&DataKey::GitHubIndex(contributor.github_handle.clone()));
+        }
+
+        contributor.github_handle = github_handle.clone();
+        env.storage()
+            .persistent()
+            .set(&DataKey::Contributor(address.clone()), &contributor);
+        env.storage()
+            .persistent()
+            .set(&DataKey::GitHubIndex(github_handle), &address);
 
         Ok(())
     }
@@ -118,6 +176,19 @@ impl ContributorRegistryContract {
             .persistent()
             .get(&DataKey::Contributor(address))
             .ok_or(ContributorError::ContributorNotFound)
+    }
+
+    /// Get contributor profile data by GitHub handle.
+    pub fn get_contributor_by_github(
+        env: Env,
+        github_handle: String,
+    ) -> Result<ContributorData, ContributorError> {
+        let contributor_address: Address = env
+            .storage()
+            .persistent()
+            .get(&DataKey::GitHubIndex(github_handle))
+            .ok_or(ContributorError::ContributorNotFound)?;
+        Self::get_contributor(env, contributor_address)
     }
 
     /// Get admin address
