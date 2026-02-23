@@ -2,7 +2,8 @@
 Job scheduler module - schedules and manages background jobs
 """
 
-import logging
+from src.utils.logger import setup_logger
+from src.utils.metrics import JOBS_RUN_TOTAL
 from datetime import datetime
 from apscheduler.schedulers.background import BackgroundScheduler
 from apscheduler.triggers.interval import IntervalTrigger
@@ -15,7 +16,7 @@ from database import DatabaseService, AnalyticsRecord
 from anomaly_detector import AnomalyDetector, AnomalyResult
 from alertbot import AlertBot
 
-logger = logging.getLogger(__name__)
+logger = setup_logger(__name__)
 
 
 class MarketAnalyzer:
@@ -144,6 +145,7 @@ class MarketAnalyzer:
                     f"  - Negative: {sentiment_summary.get('sentiment_distribution', {}).get('negative', 0):.1%}"
                 )
                 logger.info(f"  - Anomalies detected: {len(anomaly_alerts)}")
+                JOBS_RUN_TOTAL.inc()
             else:
                 logger.error("✗ Failed to save analytics to database")
 

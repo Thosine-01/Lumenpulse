@@ -16,6 +16,7 @@ import { PortfolioModule } from './portfolio/portfolio.module';
 import databaseConfig from './database/database.config';
 import { LoggerMiddleware } from './common/middleware/logger.middleware';
 import { TestController } from './test/test.controller';
+import { SnapshotsModule } from './snapshot/snapshot.module';
 
 @Module({
   imports: [
@@ -52,6 +53,9 @@ import { TestController } from './test/test.controller';
     UsersModule,
     EmailModule,
     PortfolioModule,
+    SnapshotsModule,
+    ScheduleModule.forRoot(),
+    SnapshotsModule,
   ],
   controllers: [AppController, TestController, TestExceptionController],
   providers: [

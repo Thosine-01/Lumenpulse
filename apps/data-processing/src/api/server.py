@@ -3,10 +3,9 @@ FastAPI server to expose sentiment analysis as an HTTP API
 for the Node.js backend to consume.
 """
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-import logging
 from typing import Dict, Any
 
 # Import your existing SentimentAnalyzer
@@ -17,10 +16,11 @@ import os
 sys.path.append(os.path.join(os.path.dirname(__file__), ".."))
 
 from sentiment import SentimentAnalyzer
+from src.utils.logger import setup_logger, correlation_id_ctx, generate_correlation_id
+from src.utils.metrics import API_FAILURES_TOTAL, generate_latest, CONTENT_TYPE_LATEST
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Initialize structured logger
+logger = setup_logger(__name__)
 
 # Initialize FastAPI app
 app = FastAPI(
@@ -41,6 +41,21 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+@app.middleware("http")
+async def metrics_and_logging_middleware(request: Request, call_next):
+    corr_id = request.headers.get("X-Correlation-ID", generate_correlation_id())
+    correlation_id_ctx.set(corr_id)
+    try:
+        response = await call_next(request)
+        if response.status_code >= 500:
+            API_FAILURES_TOTAL.labels(method=request.method, endpoint=request.url.path).inc()
+        response.headers["X-Correlation-ID"] = corr_id
+        return response
+    except Exception as e:
+        API_FAILURES_TOTAL.labels(method=request.method, endpoint=request.url.path).inc()
+        logger.error("Unhandled exception during request processing", exc_info=True)
+        raise
+
 # Initialize your existing SentimentAnalyzer
 sentiment_analyzer = SentimentAnalyzer()
 
@@ -59,6 +74,10 @@ class HealthResponse(BaseModel):
     timestamp: str
     service: str
 
+@app.get("/metrics")
+async def metrics():
+    """Expose Prometheus metrics"""
+    return Response(content=generate_latest(), media_type=CONTENT_TYPE_LATEST)
 
 @app.get("/")
 async def root() -> Dict[str, Any]:
