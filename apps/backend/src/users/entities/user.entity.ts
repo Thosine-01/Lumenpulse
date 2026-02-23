@@ -7,6 +7,11 @@ import {
   Index,
 } from 'typeorm';
 
+export enum UserRole {
+  USER = 'user',
+  ADMIN = 'admin',
+}
+
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
@@ -28,6 +33,13 @@ export class User {
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
   stellarPublicKey: string;
+
+  @Column({
+    type: 'enum',
+    enum: UserRole,
+    default: UserRole.USER,
+  })
+  role: UserRole;
 
   @CreateDateColumn({ type: 'timestamptz' })
   createdAt: Date;
