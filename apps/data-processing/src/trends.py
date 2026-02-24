@@ -5,7 +5,7 @@ Trend calculator module - calculates market trends from sentiment and data
 import json
 import logging
 from typing import List, Dict, Any
-from datetime import datetime, UTC
+from datetime import datetime, timezone
 from dataclasses import dataclass
 
 logger = logging.getLogger(__name__)
@@ -82,7 +82,7 @@ class TrendCalculator:
         # Update trend history
         self.trend_history[metric_name] = {
             "value": current_value,
-            "timestamp": datetime.now(UTC),
+            "timestamp": datetime.now(timezone.utc),
         }
 
         trend = Trend(
@@ -91,7 +91,7 @@ class TrendCalculator:
             previous_value=round(previous_value, 4),
             change_percentage=round(change_pct, 2),
             trend_direction=direction,
-            timestamp=datetime.now(UTC),
+            timestamp=datetime.now(timezone.utc),
         )
         logger.info("%s trend: %s (%.2f%%)", metric_name, direction, change_pct)
         return trend
