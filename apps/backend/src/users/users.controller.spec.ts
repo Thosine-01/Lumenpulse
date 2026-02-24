@@ -23,14 +23,15 @@ describe('UsersController', () => {
 
   beforeEach(async () => {
     const mockUsersService: Partial<UsersService> = {
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       findAll: jest.fn().mockResolvedValue([mockUser]),
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+
       findById: jest.fn().mockResolvedValue(mockUser),
-      // eslint-disable-next-line @typescript-eslint/unbound-method
-      update: jest.fn().mockImplementation((id: string, updateData: Partial<User>) => {
-        return Promise.resolve({ ...mockUser, ...updateData });
-      }),
+
+      update: jest
+        .fn()
+        .mockImplementation((id: string, updateData: Partial<User>) => {
+          return Promise.resolve({ ...mockUser, ...updateData });
+        }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
@@ -54,12 +55,10 @@ describe('UsersController', () => {
 
   describe('GET /users/me', () => {
     it('should return current user profile', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const mockRequest = {
         user: { id: 'test-id', email: 'test@example.com' },
       } as any;
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const result = await controller.getProfile(mockRequest);
 
       expect(result).toBeDefined();
@@ -71,7 +70,6 @@ describe('UsersController', () => {
 
   describe('PATCH /users/me', () => {
     it('should update user profile', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const mockRequest = {
         user: { id: 'test-id', email: 'test@example.com' },
       } as any;
@@ -80,13 +78,12 @@ describe('UsersController', () => {
         bio: 'Updated bio',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       const result = await controller.updateProfile(mockRequest, updateData);
 
       expect(result).toBeDefined();
       expect(result.displayName).toBe('Updated Name');
       expect(result.bio).toBe('Updated bio');
-      // eslint-disable-next-line @typescript-eslint/unbound-method
+
       expect(service.update).toHaveBeenCalledWith('test-id', {
         displayName: 'Updated Name',
         bio: 'Updated bio',
@@ -94,7 +91,6 @@ describe('UsersController', () => {
     });
 
     it('should not allow password updates', async () => {
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
       const mockRequest = {
         user: { id: 'test-id', email: 'test@example.com' },
       } as any;
@@ -103,10 +99,8 @@ describe('UsersController', () => {
         passwordHash: 'should-not-update',
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
       await controller.updateProfile(mockRequest, updateData);
 
-      // eslint-disable-next-line @typescript-eslint/unbound-method
       expect(service.update).toHaveBeenCalledWith('test-id', {
         displayName: 'Updated Name',
       });

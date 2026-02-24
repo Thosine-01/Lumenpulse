@@ -239,7 +239,7 @@ export class StellarService {
         assets,
         hasMore: !!assetsResponse.next,
         nextCursor: assetsResponse.next
-          ? (assetsResponse.next as any).toString()
+          ? (assetsResponse.next as unknown as string)
           : undefined,
       };
 
@@ -257,26 +257,38 @@ export class StellarService {
   /**
    * Maps Horizon asset records to DTOs
    */
+
   private mapAssetToDto(record: any): AssetDto {
     const asset: AssetDto = {
-      assetCode: record.asset_code,
-      assetIssuer: record.asset_issuer,
-      assetType: record.asset_type,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      assetCode: record.asset_code as string,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      assetIssuer: record.asset_issuer as string,
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      assetType: record.asset_type as string,
     };
 
     // Add optional fields if present
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (record.num_accounts !== undefined) {
-      asset.numAccounts = record.num_accounts;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      asset.numAccounts = record.num_accounts as number;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (record.amount !== undefined) {
-      asset.totalSupply = record.amount;
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
+      asset.totalSupply = record.amount as string;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
     if (record.flags) {
       asset.flags = {
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         authRequired: !!record.flags.auth_required,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         authRevocable: !!record.flags.auth_revocable,
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-member-access
         authImmutable: !!record.flags.auth_immutable,
       };
     }
