@@ -7,15 +7,6 @@ from typing import List, Dict, Any
 from vaderSentiment.vaderSentiment import SentimentIntensityAnalyzer
 from dataclasses import dataclass
 
-# Import cache manager
-try:
-    from cache_manager import CacheManager
-
-    CACHE_AVAILABLE = True
-except ImportError:
-    CACHE_AVAILABLE = False
-    print("CacheManager not available, proceeding without caching")
-
 logger = logging.getLogger(__name__)
 
 
@@ -46,15 +37,18 @@ class SentimentAnalyzer:
 
     def __init__(self):
         self.analyzer = SentimentIntensityAnalyzer()
-        # Initialize cache manager if available
-        self.cache_manager = None
-        if CACHE_AVAILABLE:
+        self.cache: object | None = None
+        try:
+            from cache_manager import CacheManager
+        except ImportError:
+            logger.info("CacheManager unavailable - sentiment caching disabled")
+        else:
             try:
-                self.cache_manager = CacheManager()
-                logger.info("CacheManager initialized successfully")
+                self.cache = CacheManager(namespace="sentiment")
             except Exception as e:
-                logger.error(f"Failed to initialize CacheManager: {e}")
-                self.cache_manager = None
+                logger.warning("Redis unavailable - sentiment caching disabled: %s", e)
+            else:
+                logger.info("Sentiment cache ready")
 
     def analyze(self, text: str) -> SentimentResult:
         """
@@ -66,68 +60,33 @@ class SentimentAnalyzer:
         Returns:
             SentimentResult object
         """
-        # Check cache first if available
-        if self.cache_manager:
-            cached_result = self.cache_manager.get(text)
-            if cached_result:
-                logger.debug(
-                    f"Returning cached sentiment result for text: {text[:50]}..."
-                )
-                # Convert dict back to SentimentResult
-                return SentimentResult(
-                    text=cached_result.get("text", text[:100]),
-                    compound_score=cached_result.get("compound_score", 0.0),
-                    positive=cached_result.get("positive", 0.0),
-                    negative=cached_result.get("negative", 0.0),
-                    neutral=cached_result.get("neutral", 1.0),
-                    sentiment_label=cached_result.get("sentiment_label", "neutral"),
-                )
+        if self.cache:
+            cached = self.cache.get(text)
+            if cached:
+                return SentimentResult(**cached)
 
-        # Perform actual analysis if not cached
-        try:
-            scores = self.analyzer.polarity_scores(text)
+        scores = self.analyzer.polarity_scores(text)
+        compound = scores["compound"]
+        if compound >= 0.05:
+            label = "positive"
+        elif compound <= -0.05:
+            label = "negative"
+        else:
+            label = "neutral"
 
-            # Determine sentiment label based on compound score
-            compound = scores["compound"]
-            if compound >= 0.05:
-                label = "positive"
-            elif compound <= -0.05:
-                label = "negative"
-            else:
-                label = "neutral"
+        result = SentimentResult(
+            text=text[:100],
+            compound_score=compound,
+            positive=scores["pos"],
+            negative=scores["neg"],
+            neutral=scores["neu"],
+            sentiment_label=label,
+        )
 
-            result = SentimentResult(
-                text=text[:100],  # Store first 100 chars for reference
-                compound_score=compound,
-                positive=scores["pos"],
-                negative=scores["neg"],
-                neutral=scores["neu"],
-                sentiment_label=label,
-            )
+        if self.cache:
+            self.cache.set(text, result.to_dict())
 
-            # Cache the result if cache is available
-            if self.cache_manager:
-                self.cache_manager.set(text, result.to_dict())
-                logger.debug(f"Cached sentiment result for text: {text[:50]}...")
-
-            return result
-        except Exception as e:
-            logger.error(f"Error analyzing sentiment: {e}")
-            # Return neutral sentiment on error
-            result = SentimentResult(
-                text=text[:100],
-                compound_score=0,
-                positive=0,
-                negative=0,
-                neutral=1,
-                sentiment_label="neutral",
-            )
-
-            # Cache the error result too to avoid repeated failures
-            if self.cache_manager:
-                self.cache_manager.set(text, result.to_dict())
-
-            return result
+        return result
 
     def analyze_batch(self, texts: List[str]) -> List[SentimentResult]:
         """
@@ -139,11 +98,8 @@ class SentimentAnalyzer:
         Returns:
             List of SentimentResult objects
         """
-        results = []
-        for text in texts:
-            results.append(self.analyze(text))
-
-        logger.info(f"Analyzed {len(results)} texts for sentiment")
+        results = [self.analyze(t) for t in texts]
+        logger.info("Analyzed %d texts for sentiment", len(results))
         return results
 
     def get_sentiment_summary(self, results: List[SentimentResult]) -> Dict[str, Any]:
