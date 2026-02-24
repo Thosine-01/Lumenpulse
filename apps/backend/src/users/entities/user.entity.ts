@@ -25,6 +25,15 @@ export class User {
   @Column({ type: 'varchar', length: 255, nullable: true })
   lastName: string;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  displayName: string;
+
+  @Column({ type: 'text', nullable: true })
+  bio: string;
+
+  @Column({ type: 'varchar', length: 500, nullable: true })
+  avatarUrl: string;
+
   @Index({ unique: true })
   @Column({ type: 'varchar', length: 255, unique: true, nullable: true })
   stellarPublicKey: string;
