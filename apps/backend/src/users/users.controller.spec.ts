@@ -23,11 +23,14 @@ describe('UsersController', () => {
 
   beforeEach(async () => {
     const mockUsersService: Partial<UsersService> = {
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       findAll: jest.fn().mockResolvedValue([mockUser]),
-
+      // eslint-disable-next-line @typescript-eslint/unbound-method
       findById: jest.fn().mockResolvedValue(mockUser),
-
-      update: jest.fn().mockResolvedValue(mockUser),
+      // eslint-disable-next-line @typescript-eslint/unbound-method
+      update: jest.fn().mockImplementation((id: string, updateData: Partial<User>) => {
+        return Promise.resolve({ ...mockUser, ...updateData });
+      }),
     };
 
     const module: TestingModule = await Test.createTestingModule({
